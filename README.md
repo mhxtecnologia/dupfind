@@ -53,6 +53,7 @@ follows the number of *likely* duplicates, not the size of the disk.
 | **Symlinks are not followed** | Avoids directory cycles and reporting the same file twice through a link. |
 | **Overlapping roots are collapsed** | `dupfind . ./src` scans `src` once; otherwise every file in it would be reported as a duplicate of itself. Roots are compared by canonical path, but output keeps the paths as typed. |
 | **Unreadable files are warnings, not failures** | One file without permission should not abort a scan of a whole disk. Warnings go to stderr (and to `errors` in JSON); `--quiet` hides them. |
+| **File names are untrusted input** | In text output and warnings, control characters and bidi overrides in a path are printed as `\u{..}`, so a crafted name cannot inject ANSI escape sequences into your terminal or fake extra lines. JSON escapes them natively. |
 | **Deterministic output** | Groups are sorted by reclaimable space, paths alphabetically, so the output is diff-friendly and testable. |
 | **Read-only by design** | dupfind never deletes or links anything. It reports; you decide. |
 | **Static release binaries** | Linux builds use musl (no glibc version requirements) and Windows builds link the C runtime statically (no Visual C++ Redistributable needed). |

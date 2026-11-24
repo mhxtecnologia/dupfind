@@ -5,6 +5,8 @@ use std::path::PathBuf;
 
 use walkdir::{DirEntry, WalkDir};
 
+use crate::report::display_path;
+
 /// Filtros aplicados durante a varredura.
 #[derive(Debug, Clone)]
 pub struct ScanOptions {
@@ -33,7 +35,7 @@ pub struct ScanError {
 impl fmt::Display for ScanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.path {
-            Some(path) => write!(f, "{}: {}", path.display(), self.message),
+            Some(path) => write!(f, "{}: {}", display_path(path), self.message),
             None => f.write_str(&self.message),
         }
     }
@@ -189,7 +191,7 @@ mod tests {
         let missing = dir.path().join("missing");
         let mut errors = Vec::new();
 
-        assert!(disjoint_roots(&[missing.clone()], &mut errors).is_empty());
+        assert!(disjoint_roots(std::slice::from_ref(&missing), &mut errors).is_empty());
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].path.as_ref(), Some(&missing));
     }

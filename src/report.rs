@@ -1,6 +1,7 @@
 //! Formata o [`Report`] como texto para leitura humana ou JSON para scripts.
 
 use std::io::{self, Write};
+use std::path::Path;
 
 use serde::Serialize;
 
@@ -20,7 +21,7 @@ pub fn write_text(out: &mut impl Write, report: &Report) -> io::Result<()> {
             &hex.as_str()[..16],
         )?;
         for path in &group.paths {
-            writeln!(out, "  {}", path.display())?;
+            writeln!(out, "  {}", display_path(path))?;
         }
         writeln!(out)?;
     }
@@ -112,6 +113,29 @@ pub fn write_json(out: &mut impl Write, report: &Report) -> io::Result<()> {
     writeln!(out)
 }
 
+/// Caminho seguro para imprimir no terminal. Nome de arquivo é dado não
+/// confiável: um `ESC[...` cru viraria sequência ANSI (limpar a tela, mudar o
+/// título, esconder linhas) e um `\n` quebraria o formato "um caminho por
+/// linha". Caracteres de controle e de direção bidi (que invertem o texto
+/// exibido) saem escapados como `\u{..}`. O JSON não precisa disso: o
+/// serde_json já escapa os de controle.
+pub fn display_path(path: &Path) -> String {
+    let text = path.to_string_lossy();
+    let mut escaped = String::with_capacity(text.len());
+    for c in text.chars() {
+        if is_unsafe_for_terminal(c) {
+            escaped.extend(c.escape_unicode());
+        } else {
+            escaped.push(c);
+        }
+    }
+    escaped
+}
+
+fn is_unsafe_for_terminal(c: char) -> bool {
+    c.is_control() || matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
+}
+
 fn plural(count: usize, singular: &str, plural: &str) -> String {
     format!("{count} {}", if count == 1 { singular } else { plural })
 }
@@ -120,6 +144,19 @@ fn plural(count: usize, singular: &str, plural: &str) -> String {
 mod tests {
     use super::*;
     use crate::DuplicateGroup;
+
+    #[test]
+    fn control_and_bidi_characters_are_escaped_for_the_terminal() {
+        let hostile = Path::new("evil\u{1b}[2Jname\nfake\u{202E}txt.exe");
+        let shown = display_path(hostile);
+
+        assert!(!shown.chars().any(is_unsafe_for_terminal));
+        assert!(shown.contains("evil\\u{1b}[2Jname\\u{a}fake\\u{202e}txt.exe"));
+        assert_eq!(
+            display_path(Path::new("fotos/praia 2024.jpg")),
+            "fotos/praia 2024.jpg"
+        );
+    }
 
     fn sample() -> Report {
         Report {

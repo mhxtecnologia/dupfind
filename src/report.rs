@@ -132,8 +132,23 @@ pub fn display_path(path: &Path) -> String {
     escaped
 }
 
+/// Controle (Cc) mais os caracteres de formatação invisíveis que permitem
+/// forjar o texto exibido: marcas e overrides de direção, espaços de largura
+/// zero, separadores de linha/parágrafo e o BOM.
 fn is_unsafe_for_terminal(c: char) -> bool {
-    c.is_control() || matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
+    c.is_control()
+        || matches!(
+            c,
+            '\u{00AD}'                      // hífen suave
+            | '\u{061C}'                    // marca de letra árabe (bidi)
+            | '\u{180E}'                    // separador de vogal mongol
+            | '\u{200B}'..='\u{200F}'       // largura zero e marcas LRM/RLM
+            | '\u{2028}'..='\u{202E}'       // separadores de linha/parágrafo e embeddings/overrides bidi
+            | '\u{2060}'..='\u{2064}'       // word joiner e operadores invisíveis
+            | '\u{2066}'..='\u{2069}'       // isolates bidi
+            | '\u{FEFF}'                    // BOM / espaço sem quebra de largura zero
+            | '\u{FFF9}'..='\u{FFFB}'       // anotações interlineares
+        )
 }
 
 fn plural(count: usize, singular: &str, plural: &str) -> String {
@@ -147,6 +162,16 @@ mod tests {
 
     #[test]
     fn control_and_bidi_characters_are_escaped_for_the_terminal() {
+        for invisible in [
+            '\u{200B}', '\u{200F}', '\u{2028}', '\u{2060}', '\u{FEFF}', '\u{061C}',
+        ] {
+            let name = format!("a{invisible}b");
+            assert_eq!(
+                display_path(Path::new(&name)),
+                format!("a{}b", invisible.escape_unicode())
+            );
+        }
+
         let hostile = Path::new("evil\u{1b}[2Jname\nfake\u{202E}txt.exe");
         let shown = display_path(hostile);
 

@@ -1,0 +1,28 @@
+[package]
+name = "dupfind"
+version = "0.1.0"
+edition = "2024"
+description = "Fast duplicate file finder: size pre-filter, partial hash, then parallel BLAKE3"
+license = "MIT"
+repository = "https://github.com/mhxtecnologia/dupfind"
+readme = "README.md"
+keywords = ["duplicates", "cli", "blake3", "filesystem", "dedup"]
+categories = ["command-line-utilities", "filesystem"]
+
+[dependencies]
+anyhow = "1.0.105"
+blake3 = "1.8.7"
+clap = { version = "4.6.9", features = ["derive"] }
+rayon = "1.12.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+walkdir = "2.5.1"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+# Binário de release menor e mais rápido: LTO completo e sem símbolos de debug.
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
